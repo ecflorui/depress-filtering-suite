@@ -1,27 +1,61 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# dummy arrary stufff
-pressure_measurements = [101.3, 101.5, 101.4, 101.7, 101.6, 101.9, 102.0]
+#dummy csv
+data = {
+    'time': range(100),
+    'pressure': [101.3 + np.random.normal(0, 0.1) for _ in range(100)] # 101.3 baseline + noise
+}
+df_dummy = pd.DataFrame(data)
+df_dummy.to_csv('pressure_data.csv', index=False)
+print("Created dummy file: pressure_data.csv")
 
-# Kalman filter parameters
-Q = 0.0001   # process noise --> i need to tune this for the sensor
-R = 0.01     # measurement noise covariance --> i need to tune this for the sensor
-x = pressure_measurements[0]  # initial estimate
-P = 1.0                       # initial estimate covariance
 
-filtered_pressure = [x]
+# loading data
+try:
+    df = pd.read_csv('pressure_data.csv')
+    pressure_measurements = df['pressure'].values
+except FileNotFoundError:
+    print("Error: 'pressure_data.csv' not found. Please ensure the file exists.")
+    exit()
 
-for z in pressure_measurements[1:]:
+# kalman filter param
+Q = 0.0001   # Process noise covariance (Trust in the physics/prediction)
+R = 0.01     # Measurement noise covariance (Trust in the sensor)
+             # Higher R = Smoother curve but slower reaction to real changes
 
-    # the prediction step
+#intialize
+x = pressure_measurements[0]  
+P = 1.0                     
+
+filtered_pressure = []
+
+
+for z in pressure_measurements:
+    # predict
     x_pred = x
     P_pred = P + Q
 
-    # then we update 
-    K = P_pred / (P_pred + R)
-    x = x_pred + K * (z - x_pred)
-    P = (1 - K) * P_pred
+    # and update
+    K = P_pred / (P_pred + R)       
+    x = x_pred + K * (z - x_pred)   
+    P = (1 - K) * P_pred            
 
     filtered_pressure.append(x)
 
-print("Filtered pressure:", filtered_pressure)
+# basic plotting stuff
+plt.figure(figsize=(12, 6))
+
+plt.plot(pressure_measurements, label='Raw Sensor Data', color='lightgray', linestyle='--', marker='o', markersize=3)
+plt.plot(filtered_pressure, label='Kalman Filtered', color='blue', linewidth=2)
+
+plt.title('Pressure Sensor: Raw vs. Kalman Filter')
+plt.xlabel('Sample Index')
+plt.ylabel('Pressure (kPa)')
+plt.legend()
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+# plot
+plt.tight_layout()
+plt.show()
